@@ -33,51 +33,60 @@ class _BingoHomePageState extends State<BingoHomePage> {
   bool isMuted = false;
   bool _isLoading = false;
   final AudioPlayer _audioPlayer = AudioPlayer(); // just_audio player
+  bool hasStarted = false;
 
   void togglePauseResume() async {
-  setState(() {
-    isPaused = !isPaused;
-  });
-
-  if (isPaused) {
-    // Stop any sound currently playing immediately
-    await _audioPlayer.stop();
-  } else {
-    // Resume number generation when unpaused
-    startGenerating();
-  }
-}
-
-void startGenerating() async {
-  stopGenerating(); // cancel any previous generation/timer if exists
-
-  while (allNumbers.isNotEmpty && !isPaused) {
-    final number = allNumbers.removeAt(0);
-
     setState(() {
-      generatedNumbers.add(number);
+      isPaused = !isPaused;
     });
 
-    await playBingoSound(number);
-
-    // Pause between numbers unless paused
-    if (isPaused) break;
-
-    await Future.delayed(const Duration(milliseconds: 300));
-
-    if (isPaused) break; // safety check
+    if (isPaused) {
+      // Stop any sound currently playing immediately
+      await _audioPlayer.stop();
+    } else {
+      // Resume number generation when unpaused
+      startGenerating();
+    }
   }
-}
 
- void stopGenerating() {
-  setState(() {
-    isPaused = true;
-    generatedNumbers = [];
-    allNumbers = List.generate(75, (i) => i + 1)..shuffle();
-  });
-  _timer?.cancel();
-  _audioPlayer.stop();
-}
+  void startGenerating() async {
+    setState(() {
+      isPaused = false;
+      hasStarted = true; // Disable "Start" button
+    });
+
+    while (allNumbers.isNotEmpty && !isPaused) {
+      final number = allNumbers.removeAt(0);
+
+      setState(() {
+        generatedNumbers.add(number);
+      });
+
+      await playBingoSound(number);
+
+      if (isPaused) break;
+
+      await Future.delayed(const Duration(milliseconds: 300));
+      if (isPaused) break;
+    }
+
+    // Game has ended
+    if (!isPaused && allNumbers.isEmpty) {
+      setState(() {
+        hasStarted = false; // Re-enable "Start" button
+      });
+    }
+  }
+
+  void stopGenerating() {
+    setState(() {
+      isPaused = true;
+      generatedNumbers = [];
+      allNumbers = List.generate(75, (i) => i + 1)..shuffle();
+    });
+    _timer?.cancel();
+    _audioPlayer.stop();
+  }
 
   @override
   void dispose() {
@@ -178,7 +187,6 @@ void startGenerating() async {
         title: const Text("ቢንጎ ጨዋታ", style: TextStyle(color: Colors.white)),
         backgroundColor: const Color(0xFF1E1E2E),
         elevation: 0,
-        
       ),
       body: Stack(
         children: [
@@ -238,152 +246,164 @@ void startGenerating() async {
       ),
     );
   }
-  
-Widget _buildTopControls(BuildContext context) {
-  return Container(
-    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-    decoration: BoxDecoration(
-      color: Colors.blueGrey[900],
-      borderRadius: BorderRadius.circular(12),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withOpacity(0.7),
-          offset: const Offset(0, 3),
-          blurRadius: 8,
-        ),
-      ],
-    ),
-    child: SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _iconTextButton(
-            icon: Icons.play_arrow,
-            label: "ጀምር",
-            color: Colors.greenAccent,
-            onPressed: startGenerating,
-          ),
-          const SizedBox(width: 16),
-          _iconTextButton(
-            icon: isPaused ? Icons.play_circle : Icons.pause_circle,
-            label: isPaused ? "Resume" : "Pause",
-            color: Colors.amberAccent,
-            onPressed: togglePauseResume,
-          ),
-          
-          const SizedBox(width: 16),
-          _iconTextButton(
-            icon: isMuted ? Icons.volume_off : Icons.volume_up,
-            label: isMuted ? "Muted" : "Sound",
-            color: Colors.white70,
-            onPressed: () {
-              setState(() {
-                isMuted = !isMuted;
-              });
-              _audioPlayer.setVolume(isMuted ? 0.0 : 1.0);
-            },
-          ),
-          const SizedBox(width: 16),
-          _iconTextButton(
-            icon: Icons.gamepad,
-            label: "Play Game",
-            color: Colors.lightBlueAccent,
-            onPressed: () async {
-              setState(() => _isLoading = true);
 
-              final gameProvider = Provider.of<GameProvider>(
-                context,
-                listen: false,
-              );
-              bool result = false;
-
-              try {
-                result = await gameProvider.createGame(
-                  stakeAmount: widget.amount,
-                  numberOfPlayers: widget.selectedNumbers.length,
-                  cutAmountPercent: widget.cutAmountPercent,
-                  cartela: widget.selectedNumbers.length,
-                );
-              } catch (e) {
-                print("Error creating game: $e");
-              }
-
-              setState(() => _isLoading = false);
-
-              showDialog(
-                barrierColor: const Color(0xFF1E1E2E),
-                context: context,
-                builder: (context) => AlertDialog(
-                  backgroundColor: Colors.grey[900],
-                  title: Text(result ? "✅ Success" : "❌ Failed",
-                      style: const TextStyle(color: Colors.white)),
-                  content: Text(
-                    result ? "Game created successfully!" : "Failed to create game.",
-                    style: const TextStyle(color: Colors.white70),
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text("OK", style: TextStyle(color: Colors.amber)),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-           const SizedBox(width: 16),
-          _iconTextButton(
-            icon: Icons.pattern,
-            label: "Pattern",
-            color: Colors.redAccent,
-            onPressed: (){
-              Navigator.push(
-  context,
-  MaterialPageRoute(builder: (_) => const PatternShowPage()),
-);
-            },
+  Widget _buildTopControls(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+      decoration: BoxDecoration(
+        color: Colors.blueGrey[900],
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.7),
+            offset: const Offset(0, 3),
+            blurRadius: 8,
           ),
         ],
       ),
-    ),
-  );
-}
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _iconTextButton(
+              icon: Icons.play_arrow,
+              label: "ጀምር",
+              color: Colors.greenAccent,
+              onPressed: hasStarted
+                  ? null
+                  : () {
+                      setState(() {
+                        generatedNumbers = [];
+                        allNumbers = List.generate(75, (i) => i + 1)..shuffle();
+                      });
+                      startGenerating();
+                    },
+            ),
+            const SizedBox(width: 16),
+            _iconTextButton(
+              icon: isPaused ? Icons.play_circle : Icons.pause_circle,
+              label: isPaused ? "Resume" : "Pause",
+              color: Colors.amberAccent,
+              onPressed: togglePauseResume,
+            ),
 
-Widget _iconTextButton({
-  required IconData icon,
-  required String label,
-  required Color color,
-  required VoidCallback onPressed,
-}) {
-  return InkWell(
-    borderRadius: BorderRadius.circular(12),
-    onTap: onPressed,
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.2),
-            shape: BoxShape.circle,
-          ),
-          padding: const EdgeInsets.all(12),
-          child: Icon(icon, color: color, size: 28),
+            const SizedBox(width: 16),
+            _iconTextButton(
+              icon: isMuted ? Icons.volume_off : Icons.volume_up,
+              label: isMuted ? "Muted" : "Sound",
+              color: Colors.white70,
+              onPressed: () {
+                setState(() {
+                  isMuted = !isMuted;
+                });
+                _audioPlayer.setVolume(isMuted ? 0.0 : 1.0);
+              },
+            ),
+            const SizedBox(width: 16),
+            _iconTextButton(
+              icon: Icons.gamepad,
+              label: "Play Game",
+              color: Colors.lightBlueAccent,
+              onPressed: () async {
+                setState(() => _isLoading = true);
+
+                final gameProvider = Provider.of<GameProvider>(
+                  context,
+                  listen: false,
+                );
+                bool result = false;
+
+                try {
+                  result = await gameProvider.createGame(
+                    stakeAmount: widget.amount,
+                    numberOfPlayers: widget.selectedNumbers.length,
+                    cutAmountPercent: widget.cutAmountPercent,
+                    cartela: widget.selectedNumbers.length,
+                  );
+                } catch (e) {
+                  print("Error creating game: $e");
+                }
+
+                setState(() => _isLoading = false);
+
+                showDialog(
+                  barrierColor: const Color(0xFF1E1E2E),
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    backgroundColor: Colors.grey[900],
+                    title: Text(
+                      result ? "✅ Success" : "❌ Failed",
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                    content: Text(
+                      result
+                          ? "Game created successfully!"
+                          : "Failed to create game.",
+                      style: const TextStyle(color: Colors.white70),
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text(
+                          "OK",
+                          style: TextStyle(color: Colors.amber),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+            const SizedBox(width: 16),
+            _iconTextButton(
+              icon: Icons.pattern,
+              label: "Pattern",
+              color: Colors.redAccent,
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const PatternShowPage()),
+                );
+              },
+            ),
+          ],
         ),
-        const SizedBox(height: 6),
-        Text(
-          label,
-          style: TextStyle(
-            color: color,
-            fontWeight: FontWeight.w600,
-            fontSize: 12,
+      ),
+    );
+  }
+
+  Widget _iconTextButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback? onPressed,
+  }) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: onPressed,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.2),
+              shape: BoxShape.circle,
+            ),
+            padding: const EdgeInsets.all(12),
+            child: Icon(icon, color: color, size: 28),
           ),
-        ),
-      ],
-    ),
-  );
-}
-
-
- 
+          const SizedBox(height: 6),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.w600,
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
