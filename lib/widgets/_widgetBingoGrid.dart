@@ -22,13 +22,13 @@ class BingoGrid extends StatelessWidget {
                     if (col == 0) {
                       // BINGO header cell
                       return Container(
-                        width: 18,
-                        height: 18,
+                        width: 20,
+                        height: 20,
                         alignment: Alignment.center,
                         // margin: const EdgeInsets.all(2),
                         decoration: BoxDecoration(
                           color: Colors.blueGrey[700],
-                          borderRadius: BorderRadius.circular(6),
+                          borderRadius: BorderRadius.circular(3),
                         ),
                         child: Text(
                           "BINGO"[row],
@@ -45,13 +45,13 @@ class BingoGrid extends StatelessWidget {
                     final isSelected = selectedNumbers.contains(number);
 
                     return Container(
-                      width: 18,
-                      height: 18,
+                      width: 20,
+                      height: 20,
                       alignment: Alignment.center,
                       margin: const EdgeInsets.all(1),
                       decoration: BoxDecoration(
                         color: isSelected ? Colors.green : Colors.grey[850],
-                        borderRadius: BorderRadius.circular(6),
+                        borderRadius: BorderRadius.circular(3),
                         border: Border.all(color: Colors.white24),
                       ),
                       child: Text(
