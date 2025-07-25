@@ -1,7 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart'; // Replace audioplayers
-import 'package:offlinebingo/config/anbesa.dart';
+import 'package:offlinebingo/config/card_pattern.dart';
+import 'package:offlinebingo/pages/SelectedNumbersPage.dart';
 
 import 'package:offlinebingo/providers/game_provider.dart';
 import 'package:offlinebingo/widgets/_patternShowPage.dart';
@@ -34,6 +35,21 @@ class _BingoHomePageState extends State<BingoHomePage> {
   bool _isLoading = false;
   final AudioPlayer _audioPlayer = AudioPlayer(); // just_audio player
   bool hasStarted = false;
+
+  final TextEditingController _cardNumberController = TextEditingController();
+  void _openSelectedNumbersPage({int? openCardNumber}) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => SelectedNumbersPage(
+          selectedNumbers: widget.selectedNumbers,
+          cards: cards,
+          generatedNumbers: generatedNumbers,
+          openCardNumber: openCardNumber,
+        ),
+      ),
+    );
+  }
 
   void togglePauseResume() async {
     setState(() {
@@ -137,47 +153,6 @@ class _BingoHomePageState extends State<BingoHomePage> {
     });
   }
 
-  void _showGridDialog(BuildContext context, int selectedNumber) {
-    final patternCard = cards.firstWhere(
-      (card) => card["cardId"] == selectedNumber,
-      orElse: () => {},
-    );
-
-    if (patternCard.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("No pattern found for card ID $selectedNumber")),
-      );
-      return;
-    }
-
-    // Convert the Map<String, dynamic> to List<List<int>>
-    final patternGrid = convertCardToGridReversed(patternCard);
-
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: Colors.grey[900],
-        title: Text(
-          "Pattern for $selectedNumber",
-          style: const TextStyle(color: Colors.white),
-        ),
-        content: Container(
-          width: double.maxFinite,
-          child: PatternGrid(
-            pattern: patternGrid,
-            generatedNumbers: generatedNumbers,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Close", style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -186,55 +161,96 @@ class _BingoHomePageState extends State<BingoHomePage> {
         foregroundColor: Colors.white,
         title: const Text("ቢንጎ ጨዋታ", style: TextStyle(color: Colors.white)),
         backgroundColor: const Color(0xFF1E1E2E),
-        elevation: 0,
+        elevation: 2,
       ),
       body: Stack(
         children: [
           Padding(
-            padding: const EdgeInsets.all(5.0),
+            padding: const EdgeInsets.all(1.0),
             child: Column(
               children: [
                 _buildTopControls(context),
-                const SizedBox(height: 20),
-                const Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    "እባክዎ ይምረጡ",
-                    style: TextStyle(fontSize: 18, color: Colors.white),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: widget.selectedNumbers.map((number) {
-                    return GestureDetector(
-                      onTap: () => _showGridDialog(context, number),
-                      child: Container(
-                        width: 50,
-                        height: 50,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: Colors.blueGrey[700],
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: Colors.white24),
-                        ),
-                        child: Text(
-                          "$number",
-                          style: const TextStyle(
-                            fontSize: 18,
-                            color: Colors.white,
+                const SizedBox(height: 5),
+                Expanded(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // BINGO GRID LEFT SIDE
+                      Expanded(
+                        flex: 3,
+                        child: Container(
+                          child: Column(
+                            children: [
+                              Expanded(
+                                child: BingoGrid(
+                                  selectedNumbers: generatedNumbers,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
-                    );
-                  }).toList(),
-                ),
 
-                const SizedBox(height: 12),
-                Expanded(
-                  child: Center(
-                    child: BingoGrid(selectedNumbers: generatedNumbers),
+                      const SizedBox(width: 12),
+                      // RIGHT PANEL (Latest Number & Winner Section)
+                      Expanded(
+                        flex: 2,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            // CALLED NUMBER BOX
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              margin: const EdgeInsets.only(bottom: 12),
+                              decoration: BoxDecoration(
+                                color: Colors.blueGrey[800],
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: Colors.amberAccent.withOpacity(0.6),
+                                  width: 1.5,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.3),
+                                    blurRadius: 6,
+                                    offset: const Offset(0, 3),
+                                  ),
+                                ],
+                              ),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    "📢 Latest Number",
+                                    style: TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Center(
+                                    child: Text(
+                                      generatedNumbers.isNotEmpty
+                                          ? "${getBingoPrefix(generatedNumbers.last).toUpperCase()} ${generatedNumbers.last}"
+                                          : "--",
+                                      style: const TextStyle(
+                                        color: Colors.amberAccent,
+                                        fontSize: 36,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            buildWinnerBox(),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -247,127 +263,210 @@ class _BingoHomePageState extends State<BingoHomePage> {
     );
   }
 
-  Widget _buildTopControls(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-      decoration: BoxDecoration(
-        color: Colors.blueGrey[900],
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.7),
-            offset: const Offset(0, 3),
-            blurRadius: 8,
-          ),
-        ],
+ Widget buildWinnerBox() {
+  final int totalSelected = widget.selectedNumbers.length;
+  final int winAmount =
+      (totalSelected * widget.amount) -
+      ((totalSelected * widget.amount * widget.cutAmountPercent) ~/ 100);
+
+  return Container(
+    padding: const EdgeInsets.all(20),
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(20),
+      gradient: LinearGradient(
+        colors: [Colors.green.shade700, Colors.green.shade900],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
       ),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _iconTextButton(
-              icon: Icons.play_arrow,
-              label: "ጀምር",
-              color: Colors.greenAccent,
-              onPressed: hasStarted
-                  ? null
-                  : () {
-                      setState(() {
-                        generatedNumbers = [];
-                        allNumbers = List.generate(75, (i) => i + 1)..shuffle();
-                      });
-                      startGenerating();
-                    },
-            ),
-            const SizedBox(width: 16),
-            _iconTextButton(
-              icon: isPaused ? Icons.play_circle : Icons.pause_circle,
-              label: isPaused ? "Resume" : "Pause",
-              color: Colors.amberAccent,
-              onPressed: togglePauseResume,
-            ),
-
-            const SizedBox(width: 16),
-            _iconTextButton(
-              icon: isMuted ? Icons.volume_off : Icons.volume_up,
-              label: isMuted ? "Muted" : "Sound",
-              color: Colors.white70,
-              onPressed: () {
-                setState(() {
-                  isMuted = !isMuted;
-                });
-                _audioPlayer.setVolume(isMuted ? 0.0 : 1.0);
-              },
-            ),
-            const SizedBox(width: 16),
-            _iconTextButton(
-              icon: Icons.gamepad,
-              label: "Play Game",
-              color: Colors.lightBlueAccent,
-              onPressed: () async {
-                setState(() => _isLoading = true);
-
-                final gameProvider = Provider.of<GameProvider>(
-                  context,
-                  listen: false,
-                );
-                bool result = false;
-
-                try {
-                  result = await gameProvider.createGame(
-                    stakeAmount: widget.amount,
-                    numberOfPlayers: widget.selectedNumbers.length,
-                    cutAmountPercent: widget.cutAmountPercent,
-                    cartela: widget.selectedNumbers.length,
-                  );
-                } catch (e) {
-                  print("Error creating game: $e");
-                }
-
-                setState(() => _isLoading = false);
-
-                showDialog(
-                  barrierColor: const Color(0xFF1E1E2E),
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    backgroundColor: Colors.grey[900],
-                    title: Text(
-                      result ? "✅ Success" : "❌ Failed",
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                    content: Text(
-                      result
-                          ? "Game created successfully!"
-                          : "Failed to create game.",
-                      style: const TextStyle(color: Colors.white70),
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text(
-                          "OK",
-                          style: TextStyle(color: Colors.amber),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-            const SizedBox(width: 16),
-            _iconTextButton(
-              icon: Icons.pattern,
-              label: "Pattern",
-              color: Colors.redAccent,
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const PatternShowPage()),
-                );
-              },
+      border: Border.all(
+        color: Colors.amberAccent.withOpacity(0.5),
+        width: 2,
+      ),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.3),
+          blurRadius: 10,
+          offset: const Offset(0, 5),
+        ),
+      ],
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: const [
+            Icon(Icons.emoji_events, color: Colors.amber, size: 28),
+            SizedBox(width: 10),
+            Text(
+              "Winner",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ],
+        ),
+        
+        const SizedBox(height: 8),
+        Text(
+          "Amount: $winAmount ETB",
+          style: const TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            color: Colors.amberAccent,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+  Widget _buildTopControls(BuildContext context) {
+    final deviceWidth = MediaQuery.of(context).size.width;
+
+    return SizedBox(
+      width: deviceWidth + 5, // 👈 Add 5 pixels to width
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 8),
+        decoration: BoxDecoration(
+          color: Colors.blueGrey[900],
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.7),
+              offset: const Offset(0, 3),
+              blurRadius: 8,
+            ),
+          ],
+        ),
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _iconTextButton(
+                icon: Icons.play_arrow,
+                label: "ጀምር",
+                color: Colors.greenAccent,
+                onPressed: hasStarted
+                    ? null
+                    : () {
+                        setState(() {
+                          generatedNumbers = [];
+                          allNumbers = List.generate(75, (i) => i + 1)
+                            ..shuffle();
+                        });
+                        startGenerating();
+                      },
+              ),
+              const SizedBox(width: 16),
+              _iconTextButton(
+                icon: isPaused ? Icons.play_circle : Icons.pause_circle,
+                label: isPaused ? "Resume" : "Pause",
+                color: Colors.amberAccent,
+                onPressed: togglePauseResume,
+              ),
+              const SizedBox(width: 16),
+              _iconTextButton(
+                icon: isMuted ? Icons.volume_off : Icons.volume_up,
+                label: isMuted ? "Muted" : "Sound",
+                color: Colors.white70,
+                onPressed: () {
+                  setState(() {
+                    isMuted = !isMuted;
+                  });
+                  _audioPlayer.setVolume(isMuted ? 0.0 : 1.0);
+                },
+              ),
+              const SizedBox(width: 16),
+              _iconTextButton(
+                icon: Icons.gamepad,
+                label: "Play Game",
+                color: Colors.lightBlueAccent,
+                onPressed: () async {
+                  setState(() => _isLoading = true);
+
+                  final gameProvider = Provider.of<GameProvider>(
+                    context,
+                    listen: false,
+                  );
+                  bool result = false;
+
+                  try {
+                    result = await gameProvider.createGame(
+                      stakeAmount: widget.amount,
+                      numberOfPlayers: widget.selectedNumbers.length,
+                      cutAmountPercent: widget.cutAmountPercent,
+                      cartela: widget.selectedNumbers.length,
+                    );
+                  } catch (e) {
+                    print("Error creating game: $e");
+                  }
+
+                  setState(() => _isLoading = false);
+
+                  showDialog(
+                    barrierColor: const Color(0xFF1E1E2E),
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      backgroundColor: Colors.grey[900],
+                      title: Text(
+                        result ? "✅ Success" : "❌ Failed",
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                      content: Text(
+                        result
+                            ? "Game created successfully!"
+                            : "Failed to create game.",
+                        style: const TextStyle(color: Colors.white70),
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text(
+                            "OK",
+                            style: TextStyle(color: Colors.amber),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(width: 16),
+              _iconTextButton(
+                icon: Icons.pattern,
+                label: "Pattern",
+                color: Colors.redAccent,
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const PatternShowPage()),
+                  );
+                },
+              ),
+              const SizedBox(width: 16),
+              _iconTextButton(
+                icon: Icons.search,
+                label: "Search",
+                color: Colors.redAccent,
+                onPressed: () {
+                  final input = _cardNumberController.text.trim();
+                  final number = int.tryParse(input);
+                  if (number != null) {
+                    _cardNumberController.clear();
+                    _openSelectedNumbersPage(openCardNumber: number);
+                  } else {
+                    _openSelectedNumbersPage(openCardNumber: number);
+                  }
+                },
+              ),
+             
+            ],
+          ),
         ),
       ),
     );
@@ -390,16 +489,20 @@ class _BingoHomePageState extends State<BingoHomePage> {
               color: color.withOpacity(0.2),
               shape: BoxShape.circle,
             ),
-            padding: const EdgeInsets.all(12),
-            child: Icon(icon, color: color, size: 28),
+            padding: const EdgeInsets.all(8), // reduced from 12
+            child: Icon(
+              icon,
+              color: color,
+              size: 20, // reduced from 28
+            ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4), // optional: slightly smaller spacing
           Text(
             label,
             style: TextStyle(
               color: color,
               fontWeight: FontWeight.w600,
-              fontSize: 12,
+              fontSize: 11, // optional: smaller text
             ),
           ),
         ],

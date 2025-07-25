@@ -32,7 +32,7 @@ class GameProvider extends ChangeNotifier {
       'numberOfPlayers': numberOfPlayers,
       'cutAmountPercent': cutAmountPercent,
       'cartela': 1,
-      'gameId': 5,
+      'gameId': "5",
     });
 
     try {

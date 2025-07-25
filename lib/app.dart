@@ -47,7 +47,7 @@ class _BingoAppState extends State<BingoApp> {
       themeMode: ThemeMode.system,
       home: Consumer<AuthProvider>(
         builder: (context, auth, _) {
-          return auth.isLoggedIn ? NumberSelectionScreen() : const LoginScreen();
+          return auth.isLoggedIn ? NumberSelectionScreen() :  LoginScreen();
         },
       ),
       routes: {
